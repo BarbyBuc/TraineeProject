@@ -50,6 +50,35 @@ object EthereumApp extends App {
 
   //ethereumDF.printSchema()
 
+  //println(ethereumDF.count())
+
+  // Check for null values
+  val nullReportDF = ethereumDF.select(
+     ethereumDF.columns.map(
+     x => count(
+     when(col(x).isNull || col(x) === "" || col(x).isNaN, x)
+     ).alias(x)
+     ): _*
+     )
+     //creating report table
+     nullReportDF.write
+     .mode(SaveMode.Overwrite)
+     .option("path", "Reports/null_table")
+     .saveAsTable("null_table")
+
+  // Check for duplicates
+  val duplicateReportDF = ethereumDF.select(
+     count("hash").alias("total_rows"),
+     countDistinct("hash").alias("unique_rows")
+     )
+     //creating report table
+     duplicateReportDF.write
+     .mode(SaveMode.Overwrite)
+     .option("path","Reports/duplicate_table")
+     .saveAsTable("duplicate_table")
+
+
+
 
 }
 
