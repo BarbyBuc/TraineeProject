@@ -1,6 +1,7 @@
-import org.apache.spark.sql.{SparkSession, SaveMode, SQLImplicits}
+import org.apache.spark.sql._
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.expressions.Window
+
 
 object EthereumApp extends App {
 
@@ -51,7 +52,7 @@ object EthereumApp extends App {
   //ethereumDF.printSchema()
 
   //println(ethereumDF.count())
-
+/**
   // Check for null values
   val nullReportDF = ethereumDF.select(
      ethereumDF.columns.map(
@@ -101,26 +102,29 @@ object EthereumApp extends App {
     .mode(SaveMode.Overwrite)
     .option("path", "Reports/contract_table")
     .saveAsTable("contract_table")
-
+*/
   // DF with only regular transactions
   val regularTransactionsDF = ethereumDF.na.drop()
 
   //regularTransactionsDF.filter("from_address == to_address").count()
 
-
-  val otherTokensDF = regularTransactionsDF.withColumn(
+  val tokensDF = regularTransactionsDF.withColumn(
     "token", when(col("value") === 0, "Other").otherwise("Ether")
   )
-  val otherTokensPercent = otherTokensDF.groupBy("token").agg(
+  val totalSpentGas = tokensDF.agg(sum("gas_price")).collect()(0).getLong(0)
+  val tokensObservations = tokensDF.groupBy("token").agg(
     count("hash").alias("quantity"),
-    round((count("hash") / otherTokensDF.count() * 100), 2).alias("percentage")
+    round((count("hash") / tokensDF.count() * 100), 2).alias("%quantity"),
+    sum("gas_price").alias("gas_spent"),
+    round((sum("gas_price") / totalSpentGas * 100), 2).alias("%gas_spent")
   )
-  otherTokensPercent.write
+  tokensObservations.write
     .mode(SaveMode.Overwrite)
     .option("path", "Reports/tokens_table")
     .saveAsTable("tokens_table")
 
-  otherTokensPercent.show()
+  
+
 
 }
 
