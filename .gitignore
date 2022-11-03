@@ -2,3 +2,5 @@
 BD
 build.sbt
 .bsp
+project
+target
