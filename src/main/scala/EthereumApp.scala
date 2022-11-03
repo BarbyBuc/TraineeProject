@@ -77,7 +77,30 @@ object EthereumApp extends App {
      .option("path","Reports/duplicate_table")
      .saveAsTable("duplicate_table")
 
+  // transforming unixtime to timestamp
+  val ethereumDFwithTime = ethereumDF.withColumn("block_timestamp", from_unixtime(col("block_timestamp")))
+    .orderBy(col("block_timestamp"))
 
+  val firstTimeDF = ethereumDFwithTime.select(col("block_timestamp"))
+
+  val lastTime = firstTimeDF.tail(1).toList
+  
+  // percentage of contracts transactions in the period
+
+  val contractsDF = ethereumDF.withColumn(
+    "type", when(col("to_address").isNull, "Contract")
+      .otherwise("Regular")
+  )
+
+  val contractsPercentage = contractsDF.groupBy("type").agg(
+    count("hash").alias("count"),
+    round(count("hash") / contractsDF.count() * 100, 2).alias("percentage")
+  )
+
+  contractsPercentage.write
+    .mode(SaveMode.Overwrite)
+    .option("path", "Reports/contract_table")
+    .saveAsTable("contract_table")
 
 
 }
