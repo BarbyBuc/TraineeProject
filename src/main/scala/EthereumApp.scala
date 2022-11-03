@@ -84,7 +84,7 @@ object EthereumApp extends App {
   val firstTimeDF = ethereumDFwithTime.select(col("block_timestamp"))
 
   val lastTime = firstTimeDF.tail(1).toList
-  
+
   // percentage of contracts transactions in the period
 
   val contractsDF = ethereumDF.withColumn(
@@ -102,6 +102,25 @@ object EthereumApp extends App {
     .option("path", "Reports/contract_table")
     .saveAsTable("contract_table")
 
+  // DF with only regular transactions
+  val regularTransactionsDF = ethereumDF.na.drop()
+
+  //regularTransactionsDF.filter("from_address == to_address").count()
+
+
+  val otherTokensDF = regularTransactionsDF.withColumn(
+    "token", when(col("value") === 0, "Other").otherwise("Ether")
+  )
+  val otherTokensPercent = otherTokensDF.groupBy("token").agg(
+    count("hash").alias("quantity"),
+    round((count("hash") / otherTokensDF.count() * 100), 2).alias("percentage")
+  )
+  otherTokensPercent.write
+    .mode(SaveMode.Overwrite)
+    .option("path", "Reports/tokens_table")
+    .saveAsTable("tokens_table")
+
+  otherTokensPercent.show()
 
 }
 
